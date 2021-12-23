@@ -1,0 +1,21 @@
+{
+  "name": "pickle-scripts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "mard@pickle.finance",
+  "license": "MIT",
+  "scripts": {
+    "start": "npx ts-node scripts/moonriver-airdrop.ts"
+  },
+  "dependencies": {
+    "@studydefi/money-legos": "^2.4.2",
+    "cross-fetch": "^3.1.4",
+    "ethers": "^5.5.2",
+    "ts-node": "^10.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.4",
+    "prettier": "^2.5.1",
+    "typescript": "^4.5.4"
+  }
+}
