@@ -2,10 +2,11 @@
   "name": "pickle-scripts",
   "version": "1.0.0",
   "main": "index.js",
-  "author": "mard@pickle.finance",
+  "author": "MisterMard",
   "license": "MIT",
   "scripts": {
-    "start": "npx ts-node scripts/moonriver-airdrop.ts"
+    "moonriver-airdrop": "npx ts-node scripts/moonriver-airdrop.ts",
+    "dill-gas-spenders": "npx ts-node scripts/dill-gas-spenders.ts"
   },
   "dependencies": {
     "@studydefi/money-legos": "^2.4.2",

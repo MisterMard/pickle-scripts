@@ -1,8 +1,10 @@
-A script to get [Pickle jars](https://app.pickle.finance/farms) users with a minimum deposit USD value.
+Miscellaneous scripts for [Pickle Finance](https://app.pickle.finance/).
 
-```
-yarn
-yarn start
-```
+- `yarn`: install all dependencies.
+
+- `yarn moonriver-airdrop`: get all moonJars users with a minimum deposit USD value of $10.
+
+- `yarn dill-gas-spenders`: get the top 100 addresses who spent the most gas interacting with Pickle's mainnet contracts (DILL, Jars and Gauges). Only DILL holders.
+
 
 Output json files can be found under `./output/`
