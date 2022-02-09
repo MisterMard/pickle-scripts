@@ -6,12 +6,17 @@
   "license": "MIT",
   "scripts": {
     "moonriver-airdrop": "npx ts-node scripts/moonriver-airdrop.ts",
-    "dill-gas-spenders": "npx ts-node scripts/dill-gas-spenders.ts"
+    "dill-gas-spenders": "npx ts-node scripts/dill-gas-spenders.ts",
+    "aurora-airdrop": "npx ts-node scripts/aurora-airdrop.ts",
+    "looks-snapshot": "npx ts-node scripts/looks-snapshot"
   },
   "dependencies": {
     "@studydefi/money-legos": "^2.4.2",
+    "@types/dotenv": "^8.2.0",
     "cross-fetch": "^3.1.4",
+    "dotenv": "^16.0.0",
     "ethers": "^5.5.2",
+    "ethers-multicall": "^0.2.1",
     "ts-node": "^10.4.0"
   },
   "devDependencies": {
