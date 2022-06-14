@@ -8,5 +8,7 @@ Miscellaneous scripts for [Pickle Finance](https://app.pickle.finance/).
 
 - `yarn looks-snapshot`: get a snapshot of all the users' balances of pLooks and pLooksEth jars.
 
+- `yarn perms-transfer`: transfer all permissions for an address on all chains to multisig.
+
 
 Output json files can be found under `./output/`
