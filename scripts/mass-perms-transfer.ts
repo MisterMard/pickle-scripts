@@ -220,14 +220,20 @@ const fetchChainCollisions = async (
     }
   });
   const jarsProms = chainData.jars.map(async (jar) => {
-    // governance
-    const [governance] = await multiProvider.all([
+    // governance, timelock
+    const [governance,timelock] = await multiProvider.all([
       new MultiContract(jar, jarAbi).governance(),
+      new MultiContract(jar, jarAbi).timelock(),
     ]);
     if (governance.toLowerCase() === wallet.toLowerCase()) {
       jars[jar]
         ? jars[jar].push("setGovernance")
         : (jars[jar] = ["setGovernance"]);
+    }
+    if (timelock.toLowerCase() === wallet.toLowerCase()) {
+      jars[jar]
+        ? jars[jar].push("setTimelock")
+        : (jars[jar] = ["setTimelock"]);
     }
   });
 
