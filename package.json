@@ -9,7 +9,8 @@
     "dill-gas-spenders": "npx ts-node scripts/dill-gas-spenders.ts",
     "aurora-airdrop": "npx ts-node scripts/aurora-airdrop.ts",
     "looks-snapshot": "npx ts-node scripts/looks-snapshot.ts",
-    "perms-transfer": "npx ts-node scripts/mass-perms-transfer.ts"
+    "perms-transfer": "npx ts-node scripts/mass-perms-transfer.ts",
+    "list-perms": "npx ts-node scripts/list-permissioned-addresses.ts"
   },
   "dependencies": {
     "@studydefi/money-legos": "^2.4.2",
@@ -19,6 +20,7 @@
     "ethers": "^5.5.2",
     "ethers-multicall": "^0.2.1",
     "ethers-multiprovider": "^0.1.3",
+    "picklefinance-core": "^0.4.80",
     "readline-sync": "^1.4.10",
     "ts-node": "^10.4.0"
   },
