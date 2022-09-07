@@ -1,13 +1,11 @@
 import { Contract as MultiContract, MultiProvider } from "ethers-multiprovider";
 import { ChainNetwork, Chains } from "picklefinance-core";
-import { RAW_CHAIN_BUNDLED_DEF } from "picklefinance-core/lib/chain/Chains";
 import {
-  AssetEnablement,
   AssetProtocol,
   JarDefinition,
   PickleModelJson,
 } from "picklefinance-core/lib/model/PickleModelJson";
-import fetch from "cross-fetch";
+import { getChainActiveJars, getMultiproviderFor, getPickleModelJson } from "./utils/helpers";
 
 interface IJarWithFees {
   jar: JarDefinition;
@@ -300,34 +298,20 @@ const feeCallMap: { [apiKey: string]: string[] } = {
   "STG-OPTIMISM-USDC": ["Reward"],
 };
 
-const enter = async () => {
-  const pfcore: PickleModelJson = await fetch(
-    "https://api.pickle.finance/prod/protocol/pfcore/"
-  ).then(async (x) => await x.json());
-
+const start = async () => {
+  const pfcore: PickleModelJson = await getPickleModelJson();
   const promises = Chains.list().map(
     async (x) => await handleOneChain(x, pfcore)
   );
   await Promise.all(promises);
-  printAllTable();
-  // printProblematicTable();
+  //printAllTable();
+  printProblematicTable();
 };
 
 const handleOneChain = async (chain: ChainNetwork, model: PickleModelJson) => {
-  const opts: { batchSize: number; multicallAddress?: string } = {
-    batchSize: 50,
-  };
+  const multiProvider = await getMultiproviderFor(chain, model);
 
-  const multicallAddress = RAW_CHAIN_BUNDLED_DEF.find(
-    (x) => x.network === chain
-  )?.multicallAddress;
-  if (multicallAddress) opts.multicallAddress = multicallAddress;
-  const multiProvider = new MultiProvider(Chains.get(chain).id, opts);
-  await multiProvider.initDefault();
-  const jars = model.assets.jars.filter(
-    (jar) => jar.chain === chain && jar.enablement === AssetEnablement.ENABLED
-  );
-
+  const jars = getChainActiveJars(chain, model);
   jars
     .filter((j) => !j.details.strategyAddr)
     .forEach((z) => console.log(`jar ${z.id} do not have a strategy address!`));
@@ -368,7 +352,7 @@ const handleOneJar = async (
   }
 };
 
-const getAbiWithCalls = (jar: JarDefinition) => {
+export const getAbiWithCalls = (jar: JarDefinition) => {
   let stratAbi = [
     "function performanceTreasuryFee() view returns(uint256)",
     "function performanceTreasuryMax() view returns(uint256)",
@@ -494,4 +478,4 @@ const printProblematicTable = () => {
   });
 };
 
-enter();
+//start();
