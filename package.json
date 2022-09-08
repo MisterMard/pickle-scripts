@@ -20,7 +20,7 @@
     "ethers": "^5.5.2",
     "ethers-multicall": "^0.2.1",
     "ethers-multiprovider": "^0.1.3",
-    "picklefinance-core": "^0.4.80",
+    "picklefinance-core": "^0.5.3",
     "readline-sync": "^1.4.10",
     "ts-node": "^10.4.0"
   },

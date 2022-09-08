@@ -12,6 +12,7 @@ import {
   getChainActiveJars,
   getMultiproviderFor,
   getPickleModelJson,
+  getProviderFor,
 } from "./utils/helpers";
 
 const SecondsInYear = 60 * 60 * 24 * 365;
@@ -38,7 +39,7 @@ const start = async (
   const pickle = modelJson.tokens.find((x) => x.id === "pickle");
   const op = modelJson.tokens.find((x) => x.id === "op");
 
-  const picklePerSecondList = await Promise.all(jars.map((jar, idx) => {
+  const annualPickleList = await Promise.all(jars.map((jar, idx) => {
     return getMatchingRewardPerSecond(jar, jarsFees[idx], pickle, modelJson);
   }));
   const opPerSecondList = await Promise.all(jars.map((jar, idx) => {
@@ -47,14 +48,12 @@ const start = async (
 
   const allocPoints = convertRewardPerSecondToAlloc(
     maxAllocPoint,
-    picklePerSecondList
-  );
-  const opAllocs = convertRewardPerSecondToAlloc(
-    maxAllocPoint,
-    opPerSecondList
+    annualPickleList
   );
 
-  print(maxPicklePerSecond, maxOpPerSecond, picklePerSecondList, opPerSecondList, allocPoints, opAllocs, jars);
+  print(maxPicklePerSecond, maxOpPerSecond, annualPickleList, opPerSecondList, allocPoints, jars);
+
+  await addAndSetNewPools(allocPoints,jars,modelJson);
 };
 
 const getPerfFeeForJar = async (
@@ -103,9 +102,9 @@ const getMatchingRewardPerSecond = async (
   const perfAprShare = (jarApr / 100) * fee;
   const annualProfitUSD = targetLiquidityUSD * perfAprShare;
   const profitMatchingReward = annualProfitUSD / rewardToken.price;
-  const matchingRewardPerSecond = ethers.utils.parseUnits(profitMatchingReward.toString(), rewardToken.decimals);
+  const matchingRewardBN = ethers.utils.parseUnits(profitMatchingReward.toString(), rewardToken.decimals);
 
-  return matchingRewardPerSecond;
+  return matchingRewardBN;
 };
 
 const convertRewardPerSecondToAlloc = (
@@ -203,18 +202,21 @@ const print = (
   maxOpPerSecond: BigNumber,
   picklePerSecondList: BigNumber[],
   opPerSecondList: BigNumber[],
-  pickleAllocs: number[],
-  opAllocs: number[],
+  allocs: number[],
   jars: JarDefinition[]
 ) => {
-  const calculatedPicklePerSecond = picklePerSecondList.reduce(
+  const totalAnnualPickles = picklePerSecondList.reduce(
     (cum, cur) => cum.add(cur),
     BigNumber.from(0)
   );
-  const calculatedOpPerSecond = opPerSecondList.reduce(
+  const totalAnnualOps = opPerSecondList.reduce(
     (cum, cur) => cum.add(cur),
     BigNumber.from(0)
   );
+
+  const calculatedPicklePerSecond = totalAnnualPickles.div(SecondsInYear);
+  const calculatedOpPerSecond = totalAnnualOps.div(SecondsInYear);
+
   if (maxPicklePerSecond.gt(calculatedPicklePerSecond)) {
     // prettier-ignore
     console.log("❌❌ Warning: Max $PICKLE Per Second is higher than the suggested value.\n\tMax value: " + maxPicklePerSecond.toString() + "\tSuggested value: " + calculatedPicklePerSecond.toString());
@@ -224,15 +226,122 @@ const print = (
     console.log("❌❌ Warning: Max $OP Per Second is higher than the suggested value.\n\tMax value: " + maxOpPerSecond.toString() + "\tSuggested value: " + calculatedOpPerSecond.toString());
   } //else {console.log("Suggested $OP Per Second value: "+ calculatedOpPerSecond.toString())}
 
-  const totalPickleAllocs = pickleAllocs.reduce((cum, cur) => cum + cur, 0);
-  const totalOpAllocs = opAllocs.reduce((cum, cur) => cum + cur, 0);
-  console.log("|JAR|pickleAllocPoint|opAllocPoint|");
+  const totalAllocs = allocs.reduce((cum, cur) => cum + cur, 0);
+
+  console.log("|JAR|allocPoint|");
   jars.forEach((jar, idx) =>
-    console.log(`|${jar.details.apiKey}|${pickleAllocs[idx]}|${opAllocs[idx]}|`)
+    console.log(`|${jar.details.apiKey}|${allocs[idx]}|`)
   );
-  console.log("|TOTAL|" + totalPickleAllocs + "|" + totalOpAllocs + "|");
+  console.log("|TOTAL|" + totalAllocs + "|");
 };
 
+const addAndSetNewPools = async (allocs: number[], jars: JarDefinition[], modelJson: PickleModelJson) => {
+
+  const mcAbi = ["function poolInfo(uint256 pid) view returns(uint128 accPicklePerShare, uint64 lastRewardTime, uint64 allocPoint)", "function lpToken(uint256 pid) view returns(address)",
+    "function add(uint256 allocPoint, address _lpToken, address _rewarder) external", "function set(uint256 _pid, uint256 _allocPoint, address _rewarder, bool overwrite) external", "function poolLength() view returns (uint256 pools)", "function massUpdatePools(uint256[] pids) external"];
+  const rewarderAbi = ["function poolInfo(uint256 pid) view returns(uint128 accPicklePerShare, uint64 lastRewardTime, uint64 allocPoint)",
+    "function add(uint256 allocPoint, uint256 _pid) external", "function set(uint256 _pid, uint256 _allocPoint) external", "function poolLength() view returns (uint256 pools)", "function massUpdatePools(uint256[] pids) external"];
+  const multiProvider = await getMultiproviderFor(jars[0].chain, modelJson);
+  const provider = getProviderFor(jars[0].chain, modelJson);
+  const owner = new ethers.Wallet(PRIVATE_KEY, provider);
+  // const owner = provider;
+
+  const minichefMulti = new MultiContract(MiniChef, mcAbi);
+  const rewarderMulti = new MultiContract(opRewarder, rewarderAbi);
+  const minichef = new ethers.Contract(MiniChef, mcAbi, owner);
+  const rewarder = new ethers.Contract(opRewarder, rewarderAbi, owner);
+
+  let [mcPoolLength, rewarderPoolLength] = await multiProvider.all([minichefMulti.poolLength(), rewarderMulti.poolLength()]);
+  mcPoolLength = mcPoolLength.toNumber();
+  rewarderPoolLength = rewarderPoolLength.toNumber();
+  if (mcPoolLength !== rewarderPoolLength) throw (`MiniChef poolLength (${mcPoolLength}) does not match OpRewarder poolLength (${rewarderPoolLength})`);
+  let pids = Array.from({length:mcPoolLength},(_,i)=>i);
+  let lpTokens: string[] = await multiProvider.all(pids.map(pid => minichefMulti.lpToken(pid)));
+
+  // Add new pools
+  const newPools: { alloc: number, jar: JarDefinition }[] = [];
+  jars.forEach((jar, idx) => {
+    const found = lpTokens.findIndex(lpToken => jar.contract.toLowerCase() === lpToken.toLowerCase());
+    if (found === -1) newPools.push({ alloc: allocs[idx], jar })
+  });
+
+  let shouldMassUpdate = false;
+  if (newPools.length) {
+    console.log(`There are ${newPools.length} new pools to be added to the rewarders`);
+    for (let i = 0; i < newPools.length; i++) {
+      const pool = newPools[i];
+      const pid = mcPoolLength + i;
+
+      console.log(`\nNew jar: ${pool.jar.details.apiKey} (${pool.jar.contract}) alloc: ${pool.alloc}`);
+
+      console.log("Adding to MiniChef...");
+      await minichef.add(pool.alloc, pool.jar.contract, opRewarder);
+      shouldMassUpdate = true;
+      await new Promise(r => setTimeout(r, 10000)); // wait for RPC to update chain state
+
+      // confirm the new pool registered
+      const newPoolLp: string = await minichef.lpToken(pid);
+      if (newPoolLp.toLowerCase() !== pool.jar.contract.toLowerCase()) throw (`New pool did not get added properly. PID ${pid} on MiniChef is: ${newPoolLp}`);
+
+      console.log("Adding to opRewarder...");
+      await rewarder.add(pool.alloc, pid);
+      shouldMassUpdate = true;
+
+      console.log("New jar added successfully");
+    }
+  }
+
+  // Adjust the allocPoint for the pools that need to be changed. Then call massUpdate
+  [mcPoolLength, rewarderPoolLength] = await multiProvider.all([minichefMulti.poolLength(), rewarderMulti.poolLength()]);
+  mcPoolLength = mcPoolLength.toNumber();
+  rewarderPoolLength = rewarderPoolLength.toNumber();
+  pids = Array.from({length:mcPoolLength},(_,i)=>i);
+  lpTokens = await multiProvider.all(pids.map(pid => minichefMulti.lpToken(pid)));
+  const mcPoolInfos = await multiProvider.all(pids.map(pid => minichefMulti.poolInfo(pid)));
+  const rewarderPoolInfos = await multiProvider.all(pids.map(pid => minichefMulti.poolInfo(pid)));
+  for (let i = 0; i < mcPoolInfos.length; i++) {
+    const lpToken = lpTokens[i];
+    const mcPoolInfo = mcPoolInfos[i];
+    const mcAlloc = mcPoolInfo[2].toNumber();
+    const rewarderPoolInfo = rewarderPoolInfos[i];
+    const rewarderAlloc = rewarderPoolInfo[2].toNumber();
+    const allocIndex = jars.findIndex(jar => jar.contract.toLowerCase() === lpToken.toLowerCase());
+    let alloc = 0;
+    if (allocIndex !== -1) alloc = allocs[i];
+
+    if (alloc === mcAlloc) {
+      console.log(`Jar ${jars[allocIndex].details.apiKey} is set correctly on MiniChef: ${alloc} allocPoints.`);
+    } else {
+      console.log(`Jar ${jars[allocIndex].details.apiKey} is not set correctly on MiniChef: Current: ${mcAlloc} Expected: ${alloc}.`);
+      console.log("Setting on MiniChef...");
+      await minichef.set(i, alloc, opRewarder, false);
+      console.log("Jar set correctly on MiniChef");
+      shouldMassUpdate = true;
+    }
+    if (alloc === rewarderAlloc) {
+      console.log(`Jar ${jars[allocIndex].details.apiKey} is set correctly on opRewarder: ${alloc} allocPoints.`);
+    } else {
+      console.log(`Jar ${jars[allocIndex].details.apiKey} is not set correctly on opRewarder: Current: ${rewarderAlloc} Expected: ${alloc}.`);
+      console.log("Setting on opRewarder...");
+      await rewarder.set(i, alloc);
+      console.log("Jar set correctly on opRewarder");
+      shouldMassUpdate = true;
+    }
+  }
+
+  if (shouldMassUpdate) {
+    const pids = Array.from({length:mcPoolLength},(_,i)=>i);
+    console.log("Calling massUpdate on MiniChef...");
+    await minichef.massUpdatePools(pids);
+    console.log("Calling massUpdate on opRewarder...");
+    await rewarder.massUpdatePools(pids);
+    console.log("Pools updated successfully");
+  }
+}
+
+const PRIVATE_KEY = "";
+const MiniChef = "0x849C283375A156A6632E8eE928308Fcb61306b7B";
+const opRewarder = "0xE039f8102319aF854fe11489a19d6b5d2799ADa7";
 const auroraPickleEmissions = BigNumber.from("218057692300000");
 const opEmissions = BigNumber.from("12860082304500000"); // roughly = 200000*1e18/(60*60*24*30*6)
 start(ChainNetwork.Optimism, auroraPickleEmissions, opEmissions);

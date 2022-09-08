@@ -35,6 +35,12 @@ export const getMultiproviderFor = async (chain: number | ChainNetwork, modelJso
   return multiProvider;
 }
 
+export const getProviderFor = (chain: number | ChainNetwork, modelJson: PickleModelJson) => {
+  const chainId = typeof chain === "number" ? chain : Chains.get(chain).id;
+  const provider = new ethers.providers.JsonRpcProvider(getRpc(chainId, modelJson));
+  return provider;
+}
+
 export const getChainActiveJars = (chain: ChainNetwork, modelJson: PickleModelJson) => {
   const jars = modelJson.assets.jars.filter(
     (jar) => jar.chain === chain && jar.enablement === AssetEnablement.ENABLED
