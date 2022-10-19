@@ -4,12 +4,19 @@ import { ChainNetwork, Chains } from "picklefinance-core";
 import { RAW_CHAIN_BUNDLED_DEF } from "picklefinance-core/lib/chain/Chains";
 import { AssetEnablement, PickleModelJson } from "picklefinance-core/lib/model/PickleModelJson";
 import fetch from "cross-fetch";
+import * as dotenv from "dotenv";
+dotenv.config();
 
+const RPCs = {
+  10: "https://1rpc.io/op",//"https://mainnet.optimism.io",//"https://rpc.ankr.com/optimism",  // optimism
+  1: "https://rpc.ankr.com/eth",
+};
 
-
-export const getRpc = (id: number | ChainNetwork, modelJson: PickleModelJson) => {
-  if (typeof id === "number") return modelJson.chains.find(chain => chain.chainId === id).rpcs[0];
-  return modelJson.chains.find(chain => chain.network === id).rpcs[0];
+const getRpc = (id: number | ChainNetwork, modelJson: PickleModelJson) => {
+  const chainId = typeof id === "number" ? id : Chains.get(id).id;
+  let rpc = RPCs[chainId];
+  if (!rpc) rpc = modelJson.chains.find(chain => chain.chainId === id).rpcs[0];
+  return rpc;
 }
 
 const initializedMPs: { [chainId: number]: { q: boolean; multiProvider?: MultiProvider } } = {};
@@ -55,5 +62,42 @@ export const getPickleModelJson = async () => {
   return pfcore;
 }
 
+export const getWallet = () => {
+  return new ethers.Wallet(process.env.PRIVATE_KEY);
+}
+
+export const getWalletFor = (chain: number | ChainNetwork, modelJson: PickleModelJson) => {
+  const provider = getProviderFor(chain, modelJson);
+  const wallet = getWallet();
+  wallet.connect(provider);
+  return wallet;
+}
 
 
+export const printTable = (headers: string[], body: string[][]) => {
+  const fmtStrLen = (str: string, len: number) => {
+    const pre = " ".repeat(Math.floor((len - str.length) / 2));
+    const trail = " ".repeat(Math.ceil((len - str.length) / 2));
+    return pre.concat(str).concat(trail);
+  };
+  const getFieldLength = (fieldOrder: number) => {
+    let len = headers[fieldOrder].length;
+    body.forEach(row => {
+      len = len > row[fieldOrder].length ? len : row[fieldOrder].length;
+    });
+    return Math.ceil((len + 2) / 2) * 2;
+  }
+  const fieldsLengths: number[] = body[0].map((_, idx) => getFieldLength(idx));
+  const rowWidth = fieldsLengths.reduce((cum, cur) => cum + cur + 1, 1);
+  const separator = { horizontal: "-", vertical: "|" };
+
+  headers.forEach((header, idx) => process.stdout.write(separator.vertical + fmtStrLen(header, fieldsLengths[idx])));
+
+  console.log(separator.vertical);
+  console.log("-".repeat(rowWidth));
+  body.forEach(row => {
+    row.forEach((field, idx) => process.stdout.write(separator.vertical + fmtStrLen(field, fieldsLengths[idx])))
+    console.log(separator.vertical);
+  });
+  console.log("-".repeat(rowWidth));
+}
