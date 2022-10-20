@@ -68,8 +68,7 @@ export const getWallet = () => {
 
 export const getWalletFor = (chain: number | ChainNetwork, modelJson: PickleModelJson) => {
   const provider = getProviderFor(chain, modelJson);
-  const wallet = getWallet();
-  wallet.connect(provider);
+  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
   return wallet;
 }
 
@@ -82,8 +81,9 @@ export const printTable = (headers: string[], body: string[][]) => {
   };
   const getFieldLength = (fieldOrder: number) => {
     let len = headers[fieldOrder].length;
-    body.forEach(row => {
-      len = len > row[fieldOrder].length ? len : row[fieldOrder].length;
+    body?.forEach(row => {
+      const rowLength = row[fieldOrder]?.length ?? 0;
+      len = len > rowLength ? len : rowLength;
     });
     return Math.ceil((len + 2) / 2) * 2;
   }
@@ -96,7 +96,7 @@ export const printTable = (headers: string[], body: string[][]) => {
   console.log(separator.vertical);
   console.log("-".repeat(rowWidth));
   body.forEach(row => {
-    row.forEach((field, idx) => process.stdout.write(separator.vertical + fmtStrLen(field, fieldsLengths[idx])))
+    row.forEach((field, idx) => process.stdout.write(separator.vertical + fmtStrLen(field??"", fieldsLengths[idx])))
     console.log(separator.vertical);
   });
   console.log("-".repeat(rowWidth));

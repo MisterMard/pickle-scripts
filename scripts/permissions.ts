@@ -459,6 +459,10 @@ const transferRoles = async (transferableRoles: { [P in ChainNetwork]?: [contrac
           abi.push("function transferOwnership(address newOwner, bool direct, bool renounce)");
           call = "transferOwnership";
           callParams.push(permissionedAddr, true, false)
+        } else if (role === "devfund") {
+          abi.push("function setDevFund(address)");
+          call = "setDevFund";
+          callParams.push(permissionedAddr);
         } else {
           call = `set${role[0].toUpperCase() + role.slice(1)}`;
           abi.push(`function ${call}(address)`);
@@ -466,7 +470,7 @@ const transferRoles = async (transferableRoles: { [P in ChainNetwork]?: [contrac
         }
 
         const contract = new ethers.Contract(chainCall[0], abi, wallet)
-        console.log(`Calling ${call}(${callParams.join(",")})`);
+        console.log(`Calling ${call}(${callParams.join(",")}) on contract: ${contract.address}`);
         try {
           const txnResp: ethers.providers.TransactionResponse = await contract[call](...callParams);
           await txnResp.wait();
@@ -504,13 +508,13 @@ const printContractsWithRoles = (contractsWithRoles: ContractsWithRolesModel) =>
 
 const printCallsList = (callsObj: { [P in ChainNetwork]?: [contract: string, role: string, permissionedAddr: string][] }) => {
   const headers = ["CHAIN", "CONTRACT ADDRESS", "ROLE", "PERMISSIONED ADDRESS"]
-  const body = Object.keys(callsObj).map(chain => {
-    const chainRows: string[][] = callsObj[chain as ChainNetwork].map(callRow => {
+  const body = [];
+  Object.keys(callsObj).forEach(chain => {
+    callsObj[chain as ChainNetwork].forEach(callRow => {
       const row = [chain, callRow[0], callRow[1], callRow[2]]
-      return row;
+      body.push(row);
     });
-    return chainRows;
-  }).flat();
+  });
 
   printTable(headers, body);
 }
