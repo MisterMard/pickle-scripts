@@ -1,13 +1,14 @@
 {
   "compilerOptions": {
-    "target": "ES6",
+    "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "allowJs": true,
+    "rootDir": "./src",
     "outDir": "./lib",
     "strict": true,
     "noImplicitAny": false,
@@ -16,5 +17,8 @@
     "noUnusedLocals": false,
     "noUnusedParameters": true,
     "strictNullChecks": false
+  },
+  "ts-node": {
+    "esm": true
   }
 }

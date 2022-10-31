@@ -1,9 +1,9 @@
 import {
   Contract as MultiContract,
 } from "ethers-multiprovider";
-import { getMultiproviderFor, getPickleModelJson, getWallet, getWalletFor, printTable } from "./utils/helpers";
-import { PickleModelJson } from "picklefinance-core/lib/model/PickleModelJson";
-import { ADDRESSES } from "picklefinance-core/lib/model/PickleModel";
+import { getMultiproviderFor, getPickleModelJson, getWallet, getWalletFor, printTable } from "./utils/helpers.js";
+import { PickleModelJson } from "picklefinance-core/lib/model/PickleModelJson.js";
+import { ADDRESSES } from "picklefinance-core/lib/model/PickleModel.js";
 import { ChainNetwork } from "picklefinance-core";
 import { ethers } from "ethers";
 import readLine from "readline-sync";
@@ -45,6 +45,7 @@ const GOOD_ADDRESSES: { [address: string]: string } = {
   "0x90ee5481a78a23a24a4290eec42e8ad0fd3b4ac3": "controller_polygon",
   "0xcf05d96b4c6c5a87b73f5f274dce1085bc7fdcc4": "controller_okex",
   "0x55d5bcef2bfd4921b8790525ff87919c2e26bd03": "controller_arbitrum",
+  "0xf968f18512a9bddd9c3a166dd253b24c27a455dd": "controller_arbitrum",
   "0xc3f393fb40f8cc499c1fe7fa5781495dc6fac9e9": "controller_moonriver",
   "0xf34514260f18bdb3ed1142b69a6055f51089ac7d": "controller_moonriver",
   "0xfa3ad976c0bdeadde81482f5fa8191ae1e7d84c0": "controller_cronos",
@@ -534,7 +535,7 @@ const start = async (constraint: "all" | "bad_only", model: ContractsWithRolesMo
   return returnModel;
 };
 
-const menu = async () => {
+export const permsMenu = async () => {
   const wallet = getWallet();
   const userAddress = wallet.address ?? undefined;
   if (userAddress) {
@@ -554,7 +555,7 @@ const menu = async () => {
     console.log("\t3) Print an address roles");
     console.log("\t4) Print an address bad roles");
     console.log("\t5) Transfer your roles " + userAddress);
-    console.log("\t0) Exit");
+    console.log("\t0) Back.");
     const choice = readLine.question("\tChoice: ", { limit: ["1", "2", "3", "4", "5", "0"] });
 
     switch (choice) {
@@ -589,23 +590,3 @@ const menu = async () => {
   }
 }
 
-
-const main = async () => {
-  const arg = process.argv[2] ?? undefined;
-  switch (arg) {
-    case undefined:
-      await menu();
-      break;
-    case "all":
-      printContractsWithRoles(await start("all"));
-      break;
-    case "bad_only":
-      printContractsWithRoles(await start("bad_only"));
-      break;
-    default:
-      console.log("Wrong Argument!");
-      break;
-  }
-}
-
-main();

@@ -4,8 +4,9 @@ import {
   AssetProtocol,
   JarDefinition,
   PickleModelJson,
-} from "picklefinance-core/lib/model/PickleModelJson";
-import { getChainActiveJars, getMultiproviderFor, getPickleModelJson } from "./utils/helpers";
+} from "picklefinance-core/lib/model/PickleModelJson.js";
+import { getChainActiveJars, getMultiproviderFor, getPickleModelJson, printTable } from "./utils/helpers.js";
+import readLine from "readline-sync";
 
 interface IJarWithFees {
   jar: JarDefinition;
@@ -33,6 +34,8 @@ const feeCallMap: { [apiKey: string]: string[] } = {
   "PSLP-AURUM-USDC": ["RAIDER"],
   "STG-POLYGON-USDT": ["Reward"],
   "STG-POLYGON-USDC": ["Reward"],
+  "QLP-MIMATIC": ["Reward"],
+  "QLP-QIMATIC": ["Reward"],
   // ARBITRUM
   "STG-ARBITRUM-USDT": ["Reward"],
   "STG-ARBITRUM-USDC": ["Reward"],
@@ -298,16 +301,6 @@ const feeCallMap: { [apiKey: string]: string[] } = {
   "STG-OPTIMISM-USDC": ["Reward"],
 };
 
-const start = async () => {
-  const pfcore: PickleModelJson = await getPickleModelJson();
-  const promises = Chains.list().map(
-    async (x) => await handleOneChain(x, pfcore)
-  );
-  await Promise.all(promises);
-  //printAllTable();
-  printProblematicTable();
-};
-
 const handleOneChain = async (chain: ChainNetwork, model: PickleModelJson) => {
   const multiProvider = await getMultiproviderFor(chain, model);
 
@@ -410,7 +403,7 @@ const calculateProperFee = (jar: JarDefinition): number => {
     - Folding: 20% 
     - Mainnet: 20%
     - Sidechains: 10%
-    - Brineries: 30% (20% treasury, 10% veWrapper flywheel) TODO
+    - TODO: Brineries: 30% (20% treasury, 10% veWrapper flywheel)
   */
   const isV3 = (jar: JarDefinition) =>
     jar.protocol === AssetProtocol.UNISWAP_V3;
@@ -440,7 +433,9 @@ const calculateProperFee = (jar: JarDefinition): number => {
 };
 
 const printAllTable = () => {
-  console.log(`|CHAIN|STRATEGY|FEE|SET|API|`);
+  const head = ["CHAIN", "STRATEGY", "FEE", "SET", "API"]
+  const body: string[][] = [];
+
   Object.keys(results).forEach((chain) => {
     for (const strat in results[chain]) {
       for (let i = 0; i < results[chain][strat].fees.length; i++) {
@@ -448,16 +443,18 @@ const printAllTable = () => {
         const setCall = results[chain][strat].setCalls[i];
         const jar = results[chain][strat].jar;
 
-        console.log(
-          `|${chain}|${strat}|${fee}|${setCall}|${jar.details.apiKey}|`
-        );
+        const row: string[] = [chain, strat, fee.toString(), setCall, jar.details.apiKey];
+        body.push(row);
       }
     }
   });
+
+  printTable(head, body);
 };
 
 const printProblematicTable = () => {
-  console.log(`|CHAIN|TIMELOCK|STRATEGY|FEE|SET|API|PROPER FEE|`);
+  const head = ["CHAIN", "TIMELOCK", "STRATEGY", "FEE", "SET", "API", "PROPER FEE"];
+  const body: string[][] = [];
   Object.keys(results).forEach((chain) => {
     for (const strat in results[chain]) {
       for (let i = 0; i < results[chain][strat].fees.length; i++) {
@@ -469,13 +466,46 @@ const printProblematicTable = () => {
           const timelock = results[chain][strat].timelock;
           const jar = results[chain][strat].jar;
 
-          console.log(
-            `|${chain}|${timelock}|${strat}|${fee}|${setCall}|${jar.details.apiKey}|${properFee}|`
-          );
+          const row: string[] = [chain, timelock, strat, fee.toString(), setCall, jar.details.apiKey, properFee.toString()];
+          body.push(row);
         }
       }
     }
   });
+  printTable(head, body);
 };
 
-//start();
+export const jarFeesMenu = async () => {
+  console.log("Fetching the current jar fees state. Please wait...");
+  const pfcore: PickleModelJson = await getPickleModelJson();
+  const promises = Chains.list().map(
+    async (x) => await handleOneChain(x, pfcore)
+  );
+  await Promise.all(promises);
+
+  let done: boolean = false;
+  while (!done) {
+    console.log("Choose an option:");
+    console.log("\t1) Print all jars with fees.");
+    console.log("\t2) Print jars with wrong fees.");
+    console.log("\t0) Back.");
+    const choice = readLine.question("\tChoice: ", { limit: ["1", "2", "0"] });
+
+    switch (choice) {
+      case "0":
+        done = true;
+        break;
+      case "1":
+        printAllTable();
+        break;
+      case "2":
+        printProblematicTable()
+        break;
+      default:
+        console.log("Wrong Choice!");
+        break;
+    }
+  }
+
+}
+

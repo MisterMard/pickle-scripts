@@ -1,8 +1,8 @@
 import { ethers } from "ethers";
 import { MultiProvider } from "ethers-multiprovider";
 import { ChainNetwork, Chains } from "picklefinance-core";
-import { RAW_CHAIN_BUNDLED_DEF } from "picklefinance-core/lib/chain/Chains";
-import { AssetEnablement, PickleModelJson } from "picklefinance-core/lib/model/PickleModelJson";
+import { RAW_CHAIN_BUNDLED_DEF } from "picklefinance-core/lib/chain/Chains.js";
+import { AssetEnablement, PickleModelJson } from "picklefinance-core/lib/model/PickleModelJson.js";
 import fetch from "cross-fetch";
 import * as dotenv from "dotenv";
 dotenv.config();
