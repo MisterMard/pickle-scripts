@@ -4,6 +4,7 @@ import { ChainNetwork, Chains } from "picklefinance-core";
 import { RAW_CHAIN_BUNDLED_DEF } from "picklefinance-core/lib/chain/Chains.js";
 import { AssetEnablement, PickleModelJson } from "picklefinance-core/lib/model/PickleModelJson.js";
 import fetch from "cross-fetch";
+import readLine from "readline-sync";
 import * as dotenv from "dotenv";
 dotenv.config();
 
@@ -101,3 +102,12 @@ export const printTable = (headers: string[], body: string[][]) => {
   });
   console.log("-".repeat(rowWidth));
 }
+
+export const promptChain = (): ChainNetwork => {
+  const allChains = Object.keys(ChainNetwork)
+  console.log("Choose a chain:");
+  allChains.forEach((chain, idx) => console.log(`\t${idx}) ${chain}`))
+  const choice = readLine.question("\tChoice: ", { limit: allChains.map((_, idx) => `${idx}`) });
+  return ChainNetwork[allChains[choice]]
+}
+

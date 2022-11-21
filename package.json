@@ -9,7 +9,7 @@
     "node": ">=14.16"
   },
   "scripts": {
-    "start": "npx ts-node ./src/scripts/optimism-allocpoints.ts",
+    "start": "node ./lib/main.js",
     "compile": "tsc -p ./",
     "build": "npm run clean && npm run compile",
     "clean": "rm -rf ./lib",
